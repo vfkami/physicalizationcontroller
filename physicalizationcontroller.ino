@@ -7,13 +7,14 @@
 #endif
 
 //defines
-#define MAXIMOPASSOS      4096
-#define COLUNAS             16
-#define LINHAS               2
-#define QTDFITASLED          6
-#define QTDMOTORES           6
-#define QTDVISORLCD          3
-#define QTDLEDSPORFITA       6
+#define MAXIMOPASSOS        4096
+#define COLUNAS               16
+#define LINHAS                 2
+#define QTDFITASLED            6
+#define QTDMOTORES             6
+#define QTDVISORLCD            3
+#define QTDLEDSPORFITA         6
+#define QTDBARRASFISICALIZACAO 6
 
 //Configuracao das Fitas de LED
 Adafruit_NeoPixel fitaLED[QTDFITASLED] = {
@@ -42,7 +43,6 @@ Stepper motores[QTDMOTORES] = {
   //adicionar a ultima linha de codigo
  };
 
-// Global Var
 int cores[QTDFITASLED][3] = {
   {0  , 0  , 255},   // Azul
   {255, 0  , 0  },   // Vermelho
@@ -52,10 +52,17 @@ int cores[QTDFITASLED][3] = {
   {255, 0  , 255}  // Ciano
 };
 
+String categorias[QTDBARRASFISICALIZACAO] = {"foo", "bar", "baz", "qux", "quux", "corge"}
+int cores[QTDBARRASFISICALIZACAO] = {0, 1, 2, 3, 4, 5, 6}
+double altura[QTDBARRASFISICALIZACAO] = {0, 1, 2, 3, 4, 5, 6}
+
+bool isBarrasMovimentadas = false;
+double vetorPassos[QTDBARRASFISICALIZACAO] = {0, 0, 0, 0, 0, 0} //usado para voltar as barras para posicao 0
+double vetorPassosDiferenca[QTDBARRASFISICALIZACAO] = {0, 0, 0, 0, 0, 0} //usado para movimentar barra entre valores
+
 void setup() {
-  // put your setup code here, to run once:
+  // iniciando comunicação serial
   Serial.begin(9600);
-  Serial.println();
   Serial.println("Iniciando...");
 
   // inicializar fitas de led
@@ -77,9 +84,9 @@ void setup() {
       visorLCD[i].clear();
     }  
 
-
+  isBarrasMovimentadas = false;
   // Temp Code
-  movimentarMotores();
+  //movimentarMotores();
   //escreverNosLCDs();
   //ligarLEDCores();
   
@@ -90,27 +97,55 @@ void loop() {
   if(Serial.available() > 0){
   
   
-  
   }
 
 
 }
 
-void movimentarMotores(){
-  Serial.println("---- Start Movimentacao dos Motores ----");
+/* 
+* Movimentar motores recebe array int como parametro 
+* converte os valores para passos e guarda no array passosTemporario
+* chama funcao armazenaArrayPassoTemporario (ver comentario no metodo)
+* verifica se as barras foram movimentadas. 
+*   se sim -> movimenta apenas a diferença entre o valor anterior e novo valor
+*   se não -> movimenta o valor inteiro em passos
+*/
+void movimentarMotores(int* valores){ // TODO: precisa ser testado
+    Serial.println("--- START: Mov motores do servidor ---");
 
-  double vetor[] = {1.2, 3.4, 5.6, 7.8, 4.1, 2.6}; //vetor deverá ser recebido via json
-  int size = 6;// tamanho será fixo - 6
-  
-  double vetorEmPassos[size];
+    //converte valores recebidos para passos
+    double passosTemporario[QTDBARRASFISICALIZACAO];
+    preencheArrayDePassos(valores, passosTemporario, QTDBARRASFISICALIZACAO)
+    armazenaArrayPassoTemporario(passosTemporario);
 
-  preencheArrayDePassos(vetor, vetorEmPassos, size);
-  levantarBarras(vetorEmPassos);
-  zerarBarras(vetorEmPassos);
-  
-  Serial.println("---- End Movimentacao dos Motores ----");
+    //verifica se barras estao na pos inicial
+    if(isBarrasMovimentadas){
+        levantarBarras(vetorPassosDiferenca);
+    }
+    else{
+        // se nao usa vetorPassos original
+        levantarBarras(vetorPassos);
+    }
+
+    Serial.println("--- END: Mov. motores do servidor ---");
 }
 
+void escreverNosLCDs(string* valores){
+  Serial.println("---- Start Escrever nos LCDs ----");
+  limparDisplays();
+
+  String s1 = "Hello";
+  String s2 = "World - ";
+
+  mostrarDisplay(s1, s2);
+  Serial.println("---- End Escrever nos LCDs ----");
+}
+
+
+
+
+
+// metodo de debug escrever nos lcds
 void escreverNosLCDs(){
   Serial.println("---- Start Escrever nos LCDs ----");
   limparDisplays();
@@ -122,6 +157,8 @@ void escreverNosLCDs(){
   Serial.println("---- End Escrever nos LCDs ----");
 }
 
+
+//metodo de debug pintar leds
 void ligarLEDCores(){
   Serial.println("---- Start Pintar LEDs ----");
 
@@ -180,6 +217,14 @@ void mostrarDisplay(String primeiraLinha, String segundaLinha){
     mostrarDadoDisplay(0, 0, primeiraLinha, visorLCD[i]);
     mostrarDadoDisplay(0, 1, segundaLinhaMod, visorLCD[i]);            
   }  
+}
+
+void mostrarDisplay(String primeiraLinha, String segundaLinha, int numeroDisplay){ 
+  visorLCD[i].clear();
+    visorLCD[i].backlight();
+
+    mostrarDadoDisplay(0, 0, primeiraLinha, visorLCD[i]);
+    mostrarDadoDisplay(0, 1, segundaLinhaMod, visorLCD[i]);   
 }
 
 void mostrarDadoDisplay(int coluna, int linha, String dado, LiquidCrystal_I2C lcd){
@@ -252,19 +297,25 @@ void removerDuplicatas(String categorias[], String vetorCategoriasUnicas[]) {
 //endregion fitas_LED
 
 //region motores
+
+// recebe como parametro vetor de passos para movimentar barras
 void levantarBarras(double* vetorDePassos){  
-  
   for (int i = 0; i < QTDMOTORES; i++){
     motores[i].step(vetorDePassos[i]);
     delay(50);
   }
+
+  isBarrasMovimentadas = true;
 }
 
-void zerarBarras(double* vetorDePassos){  
+//acessa variavel global vetorPassos e retorna barras para posição original 
+void zerarBarras(){  
   for (int i = 0; i < QTDMOTORES; i++){
-    motores[i].step(-vetorDePassos[i]);
+    motores[i].step(-vetorPassos[i]);
     delay(50);
   }
+
+  isBarrasMovimentadas = false;
 }
 //endregion motores
 
@@ -275,6 +326,7 @@ double valorParaPasso(double valor, double maximo){
   return ((MAXIMOPASSOS * valor)/(maximo));
 }
 
+// Normaliza os valores recebidos (vetorEntrada) em passos (vetorSaida) 
 void preencheArrayDePassos(double* vetorEntrada, double* vetorSaida, int tamanho) {
   double valorMaximo = findMax(vetorEntrada, tamanho);
   for (int i = 0; i < tamanho; i++) {
@@ -283,6 +335,22 @@ void preencheArrayDePassos(double* vetorEntrada, double* vetorSaida, int tamanho
 }
 
 
+/*
+* Armazena o valor do array temporario de passos (linha 325)
+* Se as barras ja tiverem sido movimentadas 
+*   - calcula a diferença entre o estado atual e o estado que foi recebido
+*/ 
+double armazenaArrayPassoTemporario(double* vetorTemporario){
+    for(int i=0; i< QTDBARRASFISICALIZACAO; i++){
+        if(isBarrasMovimentadas){
+            vetorPassosDiferenca[i] = vetorPassos[i] - vetorTemporario[i];
+        }
+    
+        vetorPassos[i] = vetorTemporario[i];
+    }
+}
+
+// Encontra valor máximo da array recebida
 double findMax(double* vetorEntrada, int tamanho){
   double maximo = 0;
 
@@ -293,42 +361,19 @@ double findMax(double* vetorEntrada, int tamanho){
   }
   return maximo;
 }
-//endregion utils
 
-/*metodo misterioso dos displays
+// Metodos de debug
 
+// Metodo de teste para subir e descer barras e testar preenchimento dos arrays
+void movimentarMotores(){
+  Serial.println("MMMM DEBUG > Start Movimentacao dos Motores ----");
 
-void mostrarDisplay(String vetorAux[], double vetorAux1[], LiquidCrystal_I2C visorLCDAux[]){  
-  int pos = 0;
-  for (int d = 0; d < QTDVISORLCD; d++){
-      visorLCD[d].clear();
-      visorLCD[d].backlight();
-      
-      mostrarDadoDisplay(0,0,vetorAux[pos],visorLCDAux[d]);
-      mostrarDadoDisplay(0,1,(String)(vetorAux1[pos]),visorLCDAux[d]);      
-      pos++;
+  double vetor[] = {1.2, 3.4, 5.6, 7.8, 4.1, 2.6}; //vetor deverá ser recebido via json  
+  double passosTemporario[QTDBARRASFISICALIZACAO];
 
-      mostrarDadoDisplay(9,0,vetorAux[pos],visorLCDAux[d]);
-      mostrarDadoDisplay(9,1,(String)(vetorAux1[pos]),visorLCDAux[d]);
-      pos++;
-  }  
+  preencheArrayDePassos(vetor, passosTemporario, QTDBARRASFISICALIZACAO);
+  levantarBarras(passosTemporario);
+  zerarBarras(passosTemporario);
+  
+  Serial.println("MMMM DEBUG > End Movimentacao dos Motores ----");
 }
-
-void mostrarDisplay(String vetorAux[], String vetorAux1[]){  
-  int pos = 0;
-  for (int d = 0; d < QTDVISORLCD; d++){
-      visorLCD[d].clear();
-      visorLCD[d].backlight();
-
-      mostrarDadoDisplay(0,0,vetorAux[pos],visorLCD[d]);
-      mostrarDadoDisplay(0,1,(String)(vetorAux1[pos]),visorLCD[d]);      
-      pos++;
-
-      mostrarDadoDisplay(9,0,vetorAux[pos],visorLCD[d]);
-      mostrarDadoDisplay(9,1,(String)(vetorAux1[pos]),visorLCD[d]);
-      pos++;
-  }  
-}
-
-
-*/
