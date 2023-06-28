@@ -6,361 +6,329 @@
  #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
 #endif
 
-//Configuração das fitas de LED
-Adafruit_NeoPixel vetorFita[6] = {
-Adafruit_NeoPixel (6, 1, NEO_GRB + NEO_KHZ800),
+//defines
+#define MAXIMOPASSOS      4096
+#define COLUNAS             16
+#define LINHAS               2
+#define QTDFITASLED          6
+#define QTDMOTORES           6
+#define QTDVISORLCD          3
+#define QTDLEDSPORFITA       6
+
+//Configuracao das Fitas de LED
+Adafruit_NeoPixel fitaLED[QTDFITASLED] = {
   Adafruit_NeoPixel (6, 2, NEO_GRB + NEO_KHZ800),
   Adafruit_NeoPixel (6, 3, NEO_GRB + NEO_KHZ800),
   Adafruit_NeoPixel (6, 4, NEO_GRB + NEO_KHZ800),
   Adafruit_NeoPixel (6, 5, NEO_GRB + NEO_KHZ800),
-  Adafruit_NeoPixel (6, 6, NEO_GRB + NEO_KHZ800)
+  Adafruit_NeoPixel (6, 6, NEO_GRB + NEO_KHZ800),
+  Adafruit_NeoPixel (6, 7, NEO_GRB + NEO_KHZ800) //LEDs/fita,porta,padrãoDeCor+freq
 };
-// Adafruit_NeoPixel (6, 8, NEO_GRB + NEO_KHZ800),
-// Adafruit_NeoPixel (6, 9, NEO_GRB + NEO_KHZ800),
-// Adafruit_NeoPixel (6, 10, NEO_GRB + NEO_KHZ800),
-// Adafruit_NeoPixel (6, 11, NEO_GRB + NEO_KHZ800),
-// Adafruit_NeoPixel (6, 12, NEO_GRB + NEO_KHZ800),
-// Adafruit_NeoPixel (6, 13, NEO_GRB + NEO_KHZ800)
-//Linhas e colunas dos displays 
-#define colunas   16
-#define linhas    2
-LiquidCrystal_I2C vetorLcd[3]= {
-LiquidCrystal_I2C (0x24, colunas, linhas),  //endereçoFísico,colunas,linhas
-LiquidCrystal_I2C (0x23, colunas, linhas),
-LiquidCrystal_I2C (0x25, colunas, linhas)};
-//LiquidCrystal_I2C (0x25, colunas, linhas),
-//LiquidCrystal_I2C (0x26, colunas, linhas),
-//LiquidCrystal_I2C (0x27, colunas, linhas)
-LiquidCrystal_I2C lcd(0x27, 20, 4);
 
-//Configuração dos motores
-Stepper motor1(2048, 40,42,41,43);  //passos/giro,portas
-Stepper motor2(2048, 36,38,37,39);
-Stepper motor3(2048, 32,34,33,35);
-Stepper motor4(2048, 28,30,29,31);
-Stepper motor5(2048, 24,26,25,27);
-Stepper motor6(2048, 44,46,45,47); 
-//Stepper motor7(2048, 46, 50, 48, 52);  
-//Stepper motor8(2048, 53, 49, 51, 47);  
-//Stepper motor9(2048, 57, 55, 56, 54);  
-//Stepper motor10(2048, 61, 59, 60, 58); 
-//Stepper motor11(2048, 65, 63, 64, 62); 
-//Stepper motor12(2048, 69, 67, 68, 66); 
-Stepper motores[6] = {motor1, motor2, motor3, motor4, motor5, motor6};
+//Configuracao dos displays LCD
+LiquidCrystal_I2C visorLCD[QTDVISORLCD]= {
+  LiquidCrystal_I2C (0x25, COLUNAS, LINHAS),  //endereçoFísico,COLUNAS,LINHAS
+  LiquidCrystal_I2C (0x23, COLUNAS, LINHAS),
+  LiquidCrystal_I2C (0x24, COLUNAS, LINHAS)
+};
 
-//Botões para interação
-// int upButton = 8;
-// int downButton = 9;
-// int selectButton = 10;
-// int menu = 1;
-//Bases de dados
-double baseBel[6] = {3, 6, 5, 2, 4, 1};
-const int tam_vetor = (int)(sizeof(baseBel)/sizeof(baseBel[0]));
-String loading = "Loading";
-String b1 = "Database 1";
-int cores[3][3] = {{255, 0, 0},{0, 255, 0},{0, 0, 255}};
-int corBarra[6] = {1,2,3,4,5,6};
-String dadosRotulos[12] = {"A","B","C","D","B","C"};
-String categoriasBaseBel[6] = {"B","B","A","D","C","A"}; 
-int vetorColor[6][3] = {{255,127,0},{255, 255, 0},{255, 0, 255},{0,255,255},{0,0,255},{0, 255, 0}};
-int amarelo[6][3] = {{255, 255, 0},{255, 255, 0},{255, 255, 0},{255, 255, 0},{255, 255, 0},{255, 255, 0}};
-int rosa[6][3] = {{255, 0, 255},{255, 0, 255},{255, 0, 255},{255, 0, 255},{255, 0, 255},{255, 0, 255}};
-int laranja[6][3] = {{255,127,0},{255,127,0},{255,127,0},{255,127,0},{255,127,0},{255,127,0}};
-int vermelho[6][3] = {{255,0,0},{255,0,0},{255,0,0},{255,0,0},{255,0,0},{255,0,0}};
-int verde[6][3] = {{0,255,0},{0,255,0},{0,255,0},{0,255,0},{0,255,0},{0,255,0}};
-int azul[6][3] = {{0,0,255},{0,0,255},{0,0,255},{0,0,255},{0,0,255},{0,0,255}};
-int apagado[6][3] = {{0,0,0},{0,0,0},{0,0,0},{0,0,0},{0,0,0},{0,0,0}};
-int vetorDadosCor[tam_vetor][3];
-String vetorCategoriasUnicas[6];
-double dados[tam_vetor] = {0, 0, 0, 0, 0, 0};
-double passos[tam_vetor] = {0, 0, 0, 0, 0, 0};
-double vetorDeZeros[tam_vetor] = {0, 0, 0, 0, 0, 0};
-char caractere;
+//Configuração dos motores de passos - ok
+Stepper motores[QTDMOTORES] = {
+  Stepper (2048, 46, 48, 47, 49),
+  Stepper (2048, 50, 52, 51, 53),
+  Stepper (2048, 28, 30, 29, 31), 
+  Stepper (2048, 32, 34, 33, 35),
+  Stepper (2048, 36, 38, 37, 39),
+  //adicionar a ultima linha de codigo
+ };
+
+// Global Var
+int cores[QTDFITASLED][3] = {
+  {0  , 0  , 255},   // Azul
+  {255, 0  , 0  },   // Vermelho
+  {0  , 255, 0  },   // Verde
+  {255, 255, 0  }, // Amarelo
+  {0  , 255, 255}, // Roxo
+  {255, 0  , 255}  // Ciano
+};
 
 void setup() {
+  // put your setup code here, to run once:
   Serial.begin(9600);
-  #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
-  clock_prescale_set(clock_div_1);
-  #endif
-  
-  for (int i = 0; i < (int) tam_vetor; i++){
-    vetorFita[i].begin();
-    vetorFita[i].setBrightness(25);
-    vetorFita[i].clear();
-  }  
-  for (int i = 0; i < (int) tam_vetor; i++){
+  Serial.println();
+  Serial.println("Iniciando...");
+
+  // inicializar fitas de led
+  for (int i = 0; i < QTDFITASLED; i++){
+    fitaLED[i].begin();
+    fitaLED[i].setBrightness(255);
+    fitaLED[i].clear();
+  }
+
+  // inicializar motor de passo
+  for (int i = 0; i < QTDMOTORES; i++){
     motores[i].setSpeed(15);
   }
-  for (int i = 0; i < (int) tam_vetor/2; i++){
-    vetorLcd[i].init();
-    vetorLcd[i].backlight();
-    vetorLcd[i].clear();
-  }
-  lcd.init();
-  lcd.backlight();
-  lcd.clear();
-  // pinMode(upButton, INPUT_PULLUP);
-  // pinMode(downButton, INPUT_PULLUP);
-  // pinMode(selectButton, INPUT_PULLUP);
-  // updateMenu();
-}
 
-void loop() {  
-  if(Serial.available() > 0){
-    caractere = Serial.read();
-      if (caractere == '1'){
-        Serial.println("dados selecionados");
-        if (!compararVetores(dados,baseBel)){
-          apagarFitas(vetorFita); // ok
-          limparDisplays(vetorLcd); // ok
-          //zeraBarras(passos); // ok
-          mostrarDisplay(loading, b1, vetorLcd);          
-          preencherDados(baseBel);
-          preencherPassos(dados);          
-          //levantaBarras(passos);          
-          criaVetorDadosCor(categoriasBaseBel);
-          mostrarVetor(baseBel);
-          mostrarVetorString(vetorCategoriasUnicas);
-          for(int i=0; i < tam_vetor; i++) { //antes era tam_vetor
-            for(int j=0; j<6; j++){    
-              vetorFita[i].setPixelColor(j,vetorFita[i].Color(vetorColor[i][0], vetorColor[i][1], vetorColor[i][2]));
-            }  
-          vetorFita[i].show();
-          }
-        //  for(int i=0; i<5; i++) {
-        //    mostrarDisplay(dadosRotulosCorBel, LegenCategoriasBaseBel, vetorLcd);
-        //    delay(500);
-        //    mostrarDisplay(dadosRotulos, baseBel, vetorLcd);
-        //    delay(500);
-        //  }         
-        }                
-      }                
-      else if (caractere == 'z'){
-        Serial.println("Zerando as barras");
-        apagarFitas(vetorFita);
-        limparDisplays(vetorLcd);
-        zeraBarras(passos);
-        preencherDados(vetorDeZeros);          
-        preencherPassos(vetorDeZeros);        
-        delay(50);                        
-      }
-  }
-}
-
-//ok
-void apagarCor(int corAux, Adafruit_NeoPixel vetorAux[]){
-  for (int i=0; i<tam_vetor; i++) {
-    if (i!=corAux) {
-      vetorAux[i].clear();
-      vetorAux[i].show();
-    }
-  }
-}
-
-//ok
-void apagarFitas(Adafruit_NeoPixel vetorAux[]){
-  for(int i=0; i<tam_vetor; i++) {
-    vetorAux[i].clear();
-    vetorAux[i].show();
-  }
-}
-
-//ok
-void limparDisplays(LiquidCrystal_I2C vetorAux[]){
-  for (int i = 0; i < (int) tam_vetor/2; i++){
-    vetorAux[i].clear();
-  }
-}
-void selecionarDadosUnicos(String vetorAux[]){
-  int soma = 0;
-  String aux[5] = {"", "", "", "", ""};
-  int pos = 0;
-  aux[0] = vetorAux[0];
-  for(int i=0; i< tam_vetor; i++) {
-    soma = 0;
-    for(int j=0; j< 5; j++) {
-      if(vetorAux[i] == aux[j]){
-        soma = soma + 1;
-      }
-    }
-    if(soma == 0){
-      aux[pos] = vetorAux[i];
-      pos = pos + 1;
-    }
-  }
-  for(int j=0; j< 5; j++) {
-    vetorCategoriasUnicas[j] = aux[j]; 
-  }  
-}
-void criaVetorDadosCor(String vetorAux[]){  
-selecionarDadosUnicos(vetorAux);  
-limparVetorCores(vetorDadosCor);
-for(int i=0; i< 5; i++) {
-    for(int j=0; j< 12; j++) {
-    if(vetorCategoriasUnicas[i] == vetorAux[j]){
-        vetorDadosCor[j][0] =  vetorColor[i][0];        
-        vetorDadosCor[j][1] =  vetorColor[i][1];        
-        vetorDadosCor[j][2] =  vetorColor[i][2];        
-    }
-    }
-}  
-}
-
-//ok
-void limparVetorCores(int vetorAux[tam_vetor][3]){
-  for(int i=0; i< tam_vetor; i++) {
-    for(int j=0; j< 3; j++) {
-      vetorAux[i][j] = 0;
+  // inicializar vetor LCD
+  for (int i = 0; i < QTDVISORLCD; i++){
+      visorLCD[i].init();
+      visorLCD[i].backlight();
+      visorLCD[i].clear();
     }  
+
+
+  // Temp Code
+  movimentarMotores();
+  //escreverNosLCDs();
+  //ligarLEDCores();
+  
+}
+
+void loop() {
+  // verificar comunicacao serial
+  if(Serial.available() > 0){
+  
+  
+  
+  }
+
+
+}
+
+void movimentarMotores(){
+  Serial.println("---- Start Movimentacao dos Motores ----");
+
+  double vetor[] = {1.2, 3.4, 5.6, 7.8, 4.1, 2.6}; //vetor deverá ser recebido via json
+  int size = 6;// tamanho será fixo - 6
+  
+  double vetorEmPassos[size];
+
+  preencheArrayDePassos(vetor, vetorEmPassos, size);
+  levantarBarras(vetorEmPassos);
+  zerarBarras(vetorEmPassos);
+  
+  Serial.println("---- End Movimentacao dos Motores ----");
+}
+
+void escreverNosLCDs(){
+  Serial.println("---- Start Escrever nos LCDs ----");
+  limparDisplays();
+
+  String s1 = "Hello";
+  String s2 = "World - ";
+
+  mostrarDisplay(s1, s2);
+  Serial.println("---- End Escrever nos LCDs ----");
+}
+
+void ligarLEDCores(){
+  Serial.println("---- Start Pintar LEDs ----");
+
+  String categorias[QTDFITASLED] = {"A", "B", "C", "D", "E", "F"};
+  String categoriasUnicas[QTDFITASLED];
+
+  removerDuplicatas(categorias, categoriasUnicas);
+
+  for(int i=0; i < QTDFITASLED; i++) {
+    // para cada fita de led, precisamos descobrir qual o index da categoria atual
+    // categoriaatual = categorias[i]
+
+    int indexCategoriaAtual = -1;
+
+    for(int c = 0; c < QTDFITASLED; c++){
+      if(categorias[i] == categoriasUnicas[c]){
+        indexCategoriaAtual = c;
+        break;
+      }
+    }
+
+    if (indexCategoriaAtual < 0){
+      Serial.println("Algum erro aconteceu ao encontrar o valor no vetor de categorias unicas");
+      return;
+    }
+
+    // j < 6 sendo 6 a qtd de leds na fita
+    for(int j = 0; j < QTDLEDSPORFITA; j++){    
+      fitaLED[i].setPixelColor(j, 
+        fitaLED[i].Color(
+          cores[indexCategoriaAtual][0], //r
+          cores[indexCategoriaAtual][1], //g
+          cores[indexCategoriaAtual][2]) //b
+        );
+    }
+    
+    fitaLED[i].show();
+  }
+
+  Serial.println("---- End Pintar LEDs ----");
+}
+
+//region display_LCD - refatorar codigo dos displays lcd
+void limparDisplays(){
+  for (int i = 0; i < QTDVISORLCD; i++){
+    visorLCD[i].clear();
   }
 }
-void mostrarDisplay(String vetorAux[], double vetorAux1[], LiquidCrystal_I2C vetorLcdAux[]){  
-  int pos = 0;
-  for (int d = 0; d < (int)tam_vetor/2; d++){
-      vetorLcd[d].clear();
-      vetorLcd[d].backlight();
-      mostrarDadoDisplay(0,0,vetorAux[pos],vetorLcdAux[d]);
-      mostrarDadoDisplay(0,1,(String)(vetorAux1[pos]),vetorLcdAux[d]);      
-      pos=pos+1;
-      mostrarDadoDisplay(9,0,vetorAux[pos],vetorLcdAux[d]);
-      mostrarDadoDisplay(9,1,(String)(vetorAux1[pos]),vetorLcdAux[d]);
-      pos=pos+1;
-  }  
-}
 
-void mostrarDisplay(String vetorAux[], String vetorAux1[], LiquidCrystal_I2C vetorLcdAux[]){  
-  int pos = 0;
-  for (int d = 0; d < (int)tam_vetor/2; d++){
-      vetorLcd[d].clear();
-      vetorLcd[d].backlight();
-      mostrarDadoDisplay(0,0,vetorAux[pos],vetorLcdAux[d]);
-      mostrarDadoDisplay(0,1,(String)(vetorAux1[pos]),vetorLcdAux[d]);      
-      pos=pos+1;
-      mostrarDadoDisplay(9,0,vetorAux[pos],vetorLcdAux[d]);
-      mostrarDadoDisplay(9,1,(String)(vetorAux1[pos]),vetorLcdAux[d]);
-      pos=pos+1;
-  }  
-}
+void mostrarDisplay(String primeiraLinha, String segundaLinha){ 
+  for (int i = 0; i < QTDVISORLCD; i++){
+    String segundaLinhaMod = segundaLinha + " " + (String) i;
+    visorLCD[i].clear();
+    visorLCD[i].backlight();
 
-void mostrarDisplay(String aux, String aux1, LiquidCrystal_I2C vetorLcdAux[]){  
-  for (int d = 0; d < (int)tam_vetor/2; d++){
-      vetorLcd[d].clear();
-      vetorLcd[d].backlight();
-      mostrarDadoDisplay(0,0,aux,vetorLcdAux[d]);
-      mostrarDadoDisplay(0,1,aux1,vetorLcdAux[d]);            
+    mostrarDadoDisplay(0, 0, primeiraLinha, visorLCD[i]);
+    mostrarDadoDisplay(0, 1, segundaLinhaMod, visorLCD[i]);            
   }  
 }
 
 void mostrarDadoDisplay(int coluna, int linha, String dado, LiquidCrystal_I2C lcd){
-  Serial.println((String)coluna + " " + (String)linha + " " + dado);
+  //Serial.println((String)coluna + " " + (String)linha + " " + dado);
   lcd.backlight();
   lcd.setCursor(coluna, linha);
   lcd.print(dado);
 }
 
+//endregion metodosLCD
 
-// -- ver onde é usado
-void mostrarDisplayInte(int coluna,int linha,String msg){  
-  lcd.setCursor(coluna,linha);
-  lcd.print(msg);
-}
-
-//ok 
-boolean compararVetores(double vetorAux1[], double vetorAux2[]){
-  int soma = 0;
-  for (int i = 0; i < tam_vetor; i++){
-    if (vetorAux1[i] == vetorAux2[i]){
-      soma = soma + 1;      
-    }    
-  }
-  if (soma == tam_vetor){
-      return true;      
-  }else{
-    return false;
-  }
-}
-//usado para preencher a variavel global dados[]
-void preencherDados(double vetorAux[]){
-  for (int i = 0; i < tam_vetor; i++){
-    dados[i] = vetorAux[i];
-    delay(50);
-  }
-}
-// usado para preencher o vetor global de passos 
-void preencherPassos(double vetorAux[]){
-  double valorMaxi = valorMaximo(vetorAux);
-  for (int i = 0; i < tam_vetor; i++){
-    passos[i] = convertValorPasso(vetorAux[i], valorMaxi);
-    delay(50);
+//region fitas_LED
+void apagarFitas(){
+  for(int i = 0; i < QTDFITASLED; i++) {
+    fitaLED[i].clear();
+    fitaLED[i].show();
   }
 }
 
-//ok
-void zeraBarras(double passosAux[]){  
-  for (int i = 0; i < tam_vetor; i++){
-    if(i == tam_vetor - 1){
-      motores[i].step(+passosAux[i]);
-      continue;
+void apagarFitaByIndex(int index){
+  fitaLED[index].clear();
+  fitaLED[index].show();
+}
+
+void colorirFitaByIndex(int index, int r, int g, int b){
+  fitaLED[index].clear();
+
+  for(int j=0; j < QTDLEDSPORFITA; j++){
+    fitaLED[index].setPixelColor(j, 
+    fitaLED[index].Color(r, g, b)
+    );
+  }
+
+  fitaLED[index].show();
+}
+
+void limparVetorCores(int* corFitas[QTDFITASLED][3]){
+  for(int i = 0; i < QTDFITASLED; i++){ 
+    for(int j = 0; j < 3; j++){ //3 = RGB
+      corFitas[i][j] = 0;
     }
-    motores[i].step(-passosAux[i]);
-    delay(50);
   }
 }
 
-//ok
-void levantaBarras(double passosAux[]){  
-  for (int i = 0; i < tam_vetor; i++){
-    if(i == tam_vetor - 1){
-      motores[i].step(-passosAux[i]);
-      continue;
+//Remove valores duplicados do array de categorias, se houver
+void removerDuplicatas(String categorias[], String vetorCategoriasUnicas[]) {
+  int pos = 0;
+  
+  for (int i = 0; i < QTDFITASLED; i++) {
+    bool duplicata = false;
+    
+    for (int j = 0; j < pos; j++) {
+      if (categorias[i] == vetorCategoriasUnicas[j]) {
+        duplicata = true;
+        break;
+      }
     }
-    motores[i].step(passosAux[i]);
+    
+    if (!duplicata) {
+      vetorCategoriasUnicas[pos] = categorias[i];
+      pos++;
+      
+      if (pos >= QTDFITASLED) {
+        break; // Para evitar acessar além dos limites do vetorCategoriasUnicas
+      }
+    }
+  }
+}
+
+//endregion fitas_LED
+
+//region motores
+void levantarBarras(double* vetorDePassos){  
+  
+  for (int i = 0; i < QTDMOTORES; i++){
+    motores[i].step(vetorDePassos[i]);
     delay(50);
   }
 }
 
-//ok
-double convertValorPasso(double aux, double maxiAux){
-  double resultado = (double)((4096 * aux)/(maxiAux));
-  return resultado;
+void zerarBarras(double* vetorDePassos){  
+  for (int i = 0; i < QTDMOTORES; i++){
+    motores[i].step(-vetorDePassos[i]);
+    delay(50);
+  }
+}
+//endregion motores
+
+
+
+//region utils
+double valorParaPasso(double valor, double maximo){
+  return ((MAXIMOPASSOS * valor)/(maximo));
 }
 
-//ok
-double valorMaximo(double vetor[]){
-   double maior = vetor[0];
-   for (int i = 0; i < tam_vetor; i++) {
-    if (vetor[i] > maior) {
-        maior = vetor[i];
-    } 
+void preencheArrayDePassos(double* vetorEntrada, double* vetorSaida, int tamanho) {
+  double valorMaximo = findMax(vetorEntrada, tamanho);
+  for (int i = 0; i < tamanho; i++) {
+    vetorSaida[i] = valorParaPasso(vetorEntrada[i], valorMaximo);
   }
-  delay(50);
-  return maior;
-}
-//ok
-double valorMinimo(double vetor[]){
-   double menor = vetor[0];
-   for (int i = 0; i < tam_vetor; i++) {
-    if (vetor[i] < menor) {
-        menor = vetor[i];
-    } 
-  }
-  delay(50);
-  return menor;
 }
 
-//ok se necessario criar um metodo mais adequado
-void mostrarVetor(double vetor[]){ 
-  for (int i = 0; i < tam_vetor; i++){
-     Serial.print(String(vetor[i])+ " ");
-    delay(50);  
-  }  
-   Serial.println("");
+
+double findMax(double* vetorEntrada, int tamanho){
+  double maximo = 0;
+
+  for (int i=0; i < tamanho; i++){
+    if (vetorEntrada[i] > maximo){
+      maximo = vetorEntrada[i];
+    }
+  }
+  return maximo;
 }
-//duplicado
-void mostrarVetorString(String vetor[]){ 
-  for (int i = 0; i < tam_vetor; i++){
-     Serial.print(String(vetor[i])+ " ");
-    delay(50);  
+//endregion utils
+
+/*metodo misterioso dos displays
+
+
+void mostrarDisplay(String vetorAux[], double vetorAux1[], LiquidCrystal_I2C visorLCDAux[]){  
+  int pos = 0;
+  for (int d = 0; d < QTDVISORLCD; d++){
+      visorLCD[d].clear();
+      visorLCD[d].backlight();
+      
+      mostrarDadoDisplay(0,0,vetorAux[pos],visorLCDAux[d]);
+      mostrarDadoDisplay(0,1,(String)(vetorAux1[pos]),visorLCDAux[d]);      
+      pos++;
+
+      mostrarDadoDisplay(9,0,vetorAux[pos],visorLCDAux[d]);
+      mostrarDadoDisplay(9,1,(String)(vetorAux1[pos]),visorLCDAux[d]);
+      pos++;
   }  
-   Serial.println("");
 }
+
+void mostrarDisplay(String vetorAux[], String vetorAux1[]){  
+  int pos = 0;
+  for (int d = 0; d < QTDVISORLCD; d++){
+      visorLCD[d].clear();
+      visorLCD[d].backlight();
+
+      mostrarDadoDisplay(0,0,vetorAux[pos],visorLCD[d]);
+      mostrarDadoDisplay(0,1,(String)(vetorAux1[pos]),visorLCD[d]);      
+      pos++;
+
+      mostrarDadoDisplay(9,0,vetorAux[pos],visorLCD[d]);
+      mostrarDadoDisplay(9,1,(String)(vetorAux1[pos]),visorLCD[d]);
+      pos++;
+  }  
+}
+
+
+*/
